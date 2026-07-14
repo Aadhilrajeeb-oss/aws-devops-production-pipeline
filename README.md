@@ -5,6 +5,16 @@ demonstrate end-to-end DevOps practice: infrastructure as code, containerized
 deployment, CI/CD automation, security hardening, monitoring, and load
 testing.
 
+## Architecture
+
+![Architecture Diagram](docs/architecture.svg)
+
+A single EC2 instance (t2.micro, Free Tier) sits in a public subnet inside a
+dedicated VPC. Docker runs the Django REST API behind Nginx. An IAM role
+(least privilege) lets the instance write logs/metrics to CloudWatch and
+read/write only its own S3 bucket. A Jenkins pipeline builds, tests, and
+deploys on every push. See `docs/ARCHITECTURE.md` for the full breakdown.
+
 ## What this project does
 This repo provisions and deploys a Django REST API on AWS, covering the full
 lifecycle a DevOps engineer is responsible for:
@@ -22,14 +32,27 @@ lifecycle a DevOps engineer is responsible for:
   memory, and log data back to AWS, with alarms configured for high CPU,
   high memory, and instance health check failures.
 - **Load testing** — a k6 script simulates ramping traffic (0 → 50
-  concurrent users) against the live API to measure latency, throughput,
-  and error rate under load.
+  concurrent users) against the live API, achieving 120.91ms p95 latency
+  and 0% error rate at peak load.
 - **CI/CD** — a Jenkins pipeline automates build, test, image push, and
   deployment on every code change.
 
 ## Tech stack
 Terraform · AWS (EC2, VPC, IAM, S3, CloudWatch) · Docker · Nginx ·
 Django REST Framework · Jenkins · k6
+
+## Live deployment
+- API health check: `http://13.206.32.62/api/health/`
+- Region: `ap-south-1` (Mumbai)
+
+## Load test results (50 concurrent users, 9-minute ramp)
+| Metric | Value |
+|---|---|
+| p95 latency | 120.91ms |
+| Avg response time | 67.07ms |
+| Throughput | 29.08 req/s |
+| Error rate | 0.00% |
+| Total requests | 15,724 |
 
 ## Repo structure
 ## How it was built
@@ -43,7 +66,7 @@ Django REST Framework · Jenkins · k6
 6. Automated the build-test-deploy cycle with a Jenkins pipeline
 
 See `docs/DEPLOYMENT_GUIDE.md` for the exact step-by-step commands, and
-`docs/ARCHITECTURE.md` + `docs/architecture.svg` for the system diagram.
+`docs/ARCHITECTURE.md` for a written breakdown of the diagram above.
 
 ## Quick start
 ```bash
@@ -59,6 +82,6 @@ terraform apply -var="key_name=<your-key>" -var="my_ip=<your-ip>/32"
 - [x] Pipeline configuration — `jenkins/Jenkinsfile`
 - [x] Security summary — `docs/SECURITY_SUMMARY.md`
 - [x] Monitoring (CloudWatch agent + alarms) — live and verified
-- [ ] Load testing report with graphs — in progress
+- [x] Load testing report with graphs — see results above
 - [ ] 5–10 min demo video
 - [ ] Final report (PDF/DOCX) — `docs/FINAL_REPORT_TEMPLATE.md`
