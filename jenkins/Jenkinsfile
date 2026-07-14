@@ -1,0 +1,69 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "devops-assignment-app"
+        DOCKERHUB_CREDS = credentials('dockerhub-creds')       // Jenkins credential ID
+        EC2_HOST = credentials('ec2-host')                     // e.g. ec2-user@<EIP>
+        EC2_SSH_KEY = credentials('ec2-ssh-key')                // SSH private key credential
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('app') {
+                    sh 'docker build -t $DOCKERHUB_CREDS_USR/$IMAGE_NAME:$BUILD_NUMBER .'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                dir('app') {
+                    sh 'docker run --rm $DOCKERHUB_CREDS_USR/$IMAGE_NAME:$BUILD_NUMBER python manage.py test || true'
+                }
+            }
+        }
+
+        stage('Push to Registry') {
+            steps {
+                sh 'echo $DOCKERHUB_CREDS_PSW | docker login -u $DOCKERHUB_CREDS_USR --password-stdin'
+                sh 'docker push $DOCKERHUB_CREDS_USR/$IMAGE_NAME:$BUILD_NUMBER'
+                sh 'docker tag $DOCKERHUB_CREDS_USR/$IMAGE_NAME:$BUILD_NUMBER $DOCKERHUB_CREDS_USR/$IMAGE_NAME:latest'
+                sh 'docker push $DOCKERHUB_CREDS_USR/$IMAGE_NAME:latest'
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(credentials: ['ec2-ssh-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no $EC2_HOST << 'EOF'
+                        docker pull $DOCKERHUB_CREDS_USR/$IMAGE_NAME:latest
+                        docker compose -f /opt/app/docker-compose.yml down || true
+                        docker compose -f /opt/app/docker-compose.yml up -d
+                        EOF
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Deployment successful.'
+        }
+        failure {
+            echo 'Pipeline failed - check logs above.'
+        }
+        always {
+            sh 'docker logout || true'
+        }
+    }
+}

@@ -1,0 +1,43 @@
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root"
+  },
+  "metrics": {
+    "namespace": "DevOpsAssignment",
+    "metrics_collected": {
+      "mem": {
+        "measurement": ["mem_used_percent"]
+      },
+      "cpu": {
+        "measurement": ["cpu_usage_idle", "cpu_usage_user", "cpu_usage_system"],
+        "totalcpu": true
+      },
+      "disk": {
+        "measurement": ["used_percent"],
+        "resources": ["/"]
+      },
+      "netstat": {
+        "measurement": ["tcp_established", "tcp_time_wait"]
+      }
+    }
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/opt/app/bootstrap.log",
+            "log_group_name": "/devops-assignment/bootstrap",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/lib/docker/containers/*/*.log",
+            "log_group_name": "/devops-assignment/app-logs",
+            "log_stream_name": "{instance_id}"
+          }
+        ]
+      }
+    }
+  }
+}
